@@ -223,7 +223,7 @@ _dict_insert(lua_State *L, Table* dict) {
         } else {
             if(node->value == NULL) {
                 node->value = table_new();
-            } 
+            }
             tmp = node->value;
         }
         node = table_insert(tmp, rune);
@@ -300,6 +300,45 @@ dict_filter(lua_State *L) {
     return 1;
 }
 
+//check
+static int
+dict_check(lua_State *L) {
+    if(!g_dict) {
+        return luaL_error(L, "need open first");
+    }
+    Table* dict = g_dict;
+    luaL_checktype(L, 1, LUA_TTABLE);
+    size_t len = lua_rawlen(L,1);
+    size_t i,j;
+    int flag = 0;
+    for(i=1;i<=len;) {
+        TableNode *node = NULL;
+        int step = 0;
+        for(j=i;j<=len;j++) {
+            lua_rawgeti(L, 1, j);
+            uint32_t rune = (uint32_t) lua_tointeger(L, -1);
+            lua_pop(L, 1);
+
+            if(node == NULL) {
+                node = table_get(dict, rune);
+            } else {
+                node = table_get(node->value, rune);
+            }
+
+            if(node && node->flag == 'o') step = j - i + 1;
+            if(!(node && node->value)) break;
+        }
+        if(step > 0) {
+            flag = 1;
+            break;
+        } else {
+            i++;
+        }
+    }
+    lua_pushboolean(L, flag);
+    return 1;
+}
+
 // interface
 int
 luaopen_crab_c(lua_State *L) {
@@ -308,6 +347,7 @@ luaopen_crab_c(lua_State *L) {
     luaL_Reg l[] = {
         {"open", dict_open},
         {"filter", dict_filter},
+        {"check", dict_check},
         {NULL, NULL}
     };
 
